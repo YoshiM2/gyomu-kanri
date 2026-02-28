@@ -1038,7 +1038,9 @@ function updateSummary(){
   }
 }
 
-function submitReport(){
+const SAVE_API_URL = "https://asia-northeast1-gyomu-kanri.cloudfunctions.net/saveReport";
+
+async function submitReport(){
   if(isPast(state.date)){ alert('過去日付の内容は修正できません'); return; }
   const pi  = getPeriodInfo();
   const cat = categoryMaster.find(c=>c.id===state.catId);
@@ -1046,24 +1048,36 @@ function submitReport(){
   const plan= planData.find(p=>p.id===state.featureId);
   const isDev  = sub && sub.isDev;
   const isCust = sub && sub.needCustomer;
-  reportIdCounter++;
-  reportData.push({
-    id: reportIdCounter,
-    name:     '田中 一郎', // 実際はログインユーザー名
-    date:     state.date,
+
+  const payload = {
+    name:      '田中 一郎',
+    date:      state.date,
     startTime: pi.startTime,
     endTime:   pi.endTime,
-    cat:      cat ? cat.name : '',
-    sub:      sub ? sub.name : '',
-    feature:  isDev && plan ? plan.name : '',
-    progress: isDev ? state.progress : null,
-    customer: isCust ? state.customer : '',
-  });
-  hideAllSteps();
-  showEl('step-success');
-  window.scrollTo(0,0);
-}
+    cat:       cat  ? cat.name  : '',
+    sub:       sub  ? sub.name  : '',
+    feature:   isDev && plan ? plan.name : '',
+    progress:  isDev ? state.progress : null,
+    customer:  isCust ? state.customer : '',
+    memo:      document.getElementById('memoText')?.value || '',
+  };
 
+  try {
+    const res = await fetch(SAVE_API_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error('送信失敗');
+    hideAllSteps();
+    showEl('step-success');
+    window.scrollTo(0,0);
+  } catch(err) {
+    alert('送信に失敗しました。ネットワークを確認してもう一度お試しください。');
+    console.error(err);
+  }
+}
+  
 function resetForm(){
   state = { date:todayStr, periodMode:'1h', catId:null, subCatId:null, customer:'', featureId:null, progress:50 };
   document.getElementById('memoText').value='';
